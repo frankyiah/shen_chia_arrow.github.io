@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Cesium Arrow Visibility</title>
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.126/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.126/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <style>
+    html, body, #cesiumContainer {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+  <script type="module">
+    // 你的 Cesium ion Access Token
+    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlYmE4MzBmZS0wN2ZkLTQzNmQtYmFlOS1mYzgyM2E1NGViMzkiLCJpZCI6Mjc4NTkxLCJpYXQiOjE3NDAzODAxOTZ9.sVborFjUrI_1lBH4Bi2xnUloj4N-jfNkY6y6enxSsas';
+
+    // 初始化 Cesium Viewer
+    const viewer = new Cesium.Viewer('cesiumContainer', {
+      terrain: Cesium.Terrain.fromWorldTerrain(),
+    });
+
+    // **台北101的正確座標**
+    const TAIPEI_101 = Cesium.Cartesian3.fromDegrees(121.564558, 25.033964);
+
+    // **飛往台北101**
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(121.564558, 25.033964, 2000.0), // 高度 2000m
+      orientation: {
+        heading: Cesium.Math.toRadians(0.0),  // 朝北
+        pitch: Cesium.Math.toRadians(-45.0), // 俯視 45°
+        roll: 0.0,
+      }
+    });
+
+    // 需要顯示箭頭的點
+    const data = [
+      { lon: 121.5600, lat: 25.0350, color: Cesium.Color.RED },
+    ];
+
+    // 計算朝向台北101的方向角度
+    function calculateBearing(start, end) {
+      const lat1 = Cesium.Math.toRadians(start.lat);
+      const lon1 = Cesium.Math.toRadians(start.lon);
+      const lat2 = Cesium.Math.toRadians(end.lat);
+      const lon2 = Cesium.Math.toRadians(end.lon);
+
+      const deltaLon = lon2 - lon1;
+      const y = Math.sin(deltaLon) * Math.cos(lat2);
+      const x =
+        Math.cos(lat1) * Math.sin(lat2) -
+        Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLon);
+      let angle = Math.atan2(y, x);
+
+      return Cesium.Math.zeroToTwoPi(angle); // 確保角度在 0 ~ 2π 之間
+    }
+
+    // **創建箭頭 Billboard**
+    const billboards = viewer.scene.primitives.add(new Cesium.BillboardCollection());
+
+    data.forEach((point) => {
+      const angle = calculateBearing(point, { lon: 121.564558, lat: 25.033964 });
+      billboards.add({
+        position: Cesium.Cartesian3.fromDegrees(point.lon, point.lat),
+        image: "./arrow.png",  // 你的箭頭圖案
+        color: point.color,
+        rotation: angle,
+        alignedAxis: Cesium.Cartesian3.UNIT_Z,
+        width: 20,
+        height: 40,
+        show: true, // **無論遠近都顯示箭頭**
+      });
+    });
+
+    // **加入 Cesium OSM 3D 建築**
+    Cesium.createOsmBuildingsAsync().then((buildingTileset) => {
+      viewer.scene.primitives.add(buildingTileset);
+    });
+
+  </script>
+</body>
+</html>
